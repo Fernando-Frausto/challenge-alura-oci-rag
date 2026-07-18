@@ -1,6 +1,5 @@
-streamlit==1.30.0
+streamlit
 langchain
 langchain-community
 faiss-cpu
 pypdf
-# Agrega aquí cualquier otra librería que hayas usado en tu RAG (ej. openai, groq, etc.)
