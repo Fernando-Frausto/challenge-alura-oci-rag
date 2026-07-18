@@ -1,6 +1,13 @@
 import streamlit as st
+import os
+import pypdf
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_community.vectorstores import FAISS
+from langchain.chains.question_answering import load_qa_chain
+from langchain.prompts import PromptTemplate
 
-# --- 1. CONFIGURACIÓN DEL NÚCLEO (No Sidebar for clean look) ---
+# --- 1. CONFIGURACIÓN DEL NÚCLEO ---
 st.set_page_config(
     page_title="QroTech | AI Core v2.1",
     page_icon="🤖",
@@ -8,35 +15,23 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. COLORES Y ESTILOS CORPORATIVOS ---
-# Definimos los colores aquí para un mantenimiento fácil
-BG_COLOR = "#070B19" # Deep Navy
-CARD_BG_COLOR = "#0D111F" # Slightly lighter than BG
-TEXT_COLOR = "#FAFAFA"
-SUBTITLE_COLOR = "#8B949E"
-CYAN_ACCENT = "#00F2FE"
-CYAN_ALT = "#4FACFE"
-BORDER_COLOR = "#1E293B"
+# Validar y cargar API Key desde la bóveda secreta
+if "GEMINI_API_KEY" in st.secrets:
+    os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEY"]
+else:
+    st.error("Error de Sistema: Clave GEMINI_API_KEY no encontrada en los secretos.")
 
-# --- 3. CSS AVANZADO (Neo-Cyber Premium Look) ---
-st.markdown(f"""
+# --- 2. COLORES Y ESTILOS CORPORATIVOS ---
+st.markdown("""
 <style>
-    /* Importar tipografía moderna de Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Grotesk:wght@400;700&display=swap');
     
-    html, body, [class*="css"] {{
-        font-family: 'Inter', sans-serif;
-    }}
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #070B19; }
     
-    /* Fondo principal */
-    .stApp {{
-        background-color: {BG_COLOR}; 
-    }}
-    
-    /* --- ENCABEZADO --- */
-    .qrotech-title {{
+    .qrotech-title {
         font-family: 'Space Grotesk', sans-serif;
-        background: linear-gradient(90deg, {CYAN_ACCENT} 0%, {CYAN_ALT} 100%);
+        background: linear-gradient(90deg, #00F2FE 0%, #4FACFE 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-size: 3.5rem;
@@ -44,115 +39,99 @@ st.markdown(f"""
         text-align: center;
         margin-bottom: 0px;
         padding-bottom: 0px;
-    }}
+    }
     
-    .qrotech-subtitle {{
-        color: {SUBTITLE_COLOR};
+    .qrotech-subtitle {
+        color: #8B949E;
         text-align: center;
         font-size: 1.1rem;
         margin-top: -10px;
         margin-bottom: 40px;
-    }}
+    }
 
-    /* --- TARJETAS DE ESTADO (Reemplazo de st.metric) --- */
-    .status-container {{
-        display: flex;
-        justify-content: space-between;
-        gap: 15px;
-        margin-bottom: 30px;
-    }}
-
-    .status-card {{
-        background-color: {CARD_BG_COLOR};
-        border: 1px solid {BORDER_COLOR};
-        border-radius: 12px;
-        padding: 15px 20px;
-        width: 100%;
-        transition: all 0.2s ease-in-out;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }}
-
-    .status-card:hover {{
-        border-color: {CYAN_ALT};
-        box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
-        transform: translateY(-2px);
-    }}
-
-    .status-label {{
-        color: {SUBTITLE_COLOR};
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 5px;
-    }}
-
-    .status-value {{
-        color: {CYAN_ACCENT};
-        font-size: 1.3rem;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }}
+    .status-container { display: flex; justify-content: space-between; gap: 15px; margin-bottom: 30px; }
+    .status-card {
+        background-color: #0D111F; border: 1px solid #1E293B; border-radius: 12px;
+        padding: 15px 20px; width: 100%; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .status-label { color: #8B949E; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+    .status-value { color: #00F2FE; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .status-icon-dot { height: 12px; width: 12px; background-color: #00C853; border-radius: 50%; display: inline-block; }
     
-    .status-icon-dot {{
-        height: 12px;
-        width: 12px;
-        background-color: #00C853; /* Green */
-        border-radius: 50%;
-        display: inline-block;
-    }}
-
-    /* --- CHAT BUBBLES --- */
-    [data-testid="stChatMessage"] {{
-        background-color: transparent;
-        margin-bottom: 15px;
-    }}
+    [data-testid="stChatMessageAsAssistant"] { background-color: #0F172A; border-radius: 12px; padding: 15px; border: 1px solid #1E293B; }
+    [data-testid="stChatMessageAsAssistant"] p { color: #FAFAFA; }
+    [data-testid="stChatMessageAvatar"] > div { background-color: #0F172A; border-radius: 8px; }
     
-    [data-testid="stChatMessageAsAssistant"] {{
-        background-color: #0F172A;
-        border-radius: 12px;
-        padding: 15px;
-        border: 1px solid {BORDER_COLOR};
-    }}
-    
-    [data-testid="stChatMessageAsAssistant"] p {{
-        color: {TEXT_COLOR};
-    }}
-
-    /* Avatar del asistente */
-    [data-testid="stChatMessageAvatar"] > div {{
-        background-color: #0F172A;
-        border-radius: 8px;
-    }}
-
-    /* --- INPUT TEXT --- */
-    .stChatInputContainer {{
-        border-radius: 12px;
-        border: 1px solid {BORDER_COLOR};
-        background-color: #0F172A;
-        margin-top: 10px;
-        transition: border-color 0.2s ease-in-out;
-    }}
-    
-    .stChatInputContainer:focus-within {{
-        border-color: {CYAN_ACCENT};
-    }}
-
-    /* Quitar línea superior por defecto */
-    header {{visibility: hidden;}}
-    .stDivider {{margin-bottom: 30px;}}
-
+    .stChatInputContainer { border-radius: 12px; border: 1px solid #1E293B; background-color: #0F172A; margin-top: 10px; }
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ENCABEZADO PERSONALIZADO ---
+# --- 3. FUNCIONES DEL MOTOR RAG (BACKEND) ---
+def get_pdf_text(pdf_docs):
+    text = ""
+    for pdf in pdf_docs:
+        reader = pypdf.PdfReader(pdf)
+        for page in reader.pages:
+            if page.extract_text():
+                text += page.extract_text()
+    return text
+
+def get_text_chunks(text):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    return text_splitter.split_text(text)
+
+def create_vector_store(text_chunks):
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+    return vector_store
+
+def get_conversational_chain():
+    prompt_template = """
+    Eres el asistente técnico oficial de QroTech Data Systems.
+    Responde a la consulta basándote ÚNICAMENTE en el contexto proporcionado del manual técnico.
+    Si la respuesta no se encuentra en el contexto, responde "Esta información no se encuentra en la documentación actual del sistema", no inventes información.
+    
+    Contexto:
+    {context}
+    
+    Pregunta:
+    {question}
+    
+    Respuesta Técnica:
+    """
+    model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3)
+    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+    return load_qa_chain(model, chain_type="stuff", prompt=prompt)
+
+# Inicializar Base Vectorial en la sesión
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
+
+# --- 4. MENÚ LATERAL (CARGA DE DOCUMENTOS) ---
+with st.sidebar:
+    st.markdown("### 📂 Carga de Documentación")
+    st.markdown("Sube el PDF para inyectarlo en la base vectorial.")
+    pdf_docs = st.file_uploader("Selecciona archivos PDF", accept_multiple_files=True, type=["pdf"])
+    
+    if st.button("Procesar Datos en FAISS"):
+        if pdf_docs:
+            with st.spinner("Extrayendo texto y generando vectores..."):
+                raw_text = get_pdf_text(pdf_docs)
+                text_chunks = get_text_chunks(raw_text)
+                st.session_state.vector_store = create_vector_store(text_chunks)
+                st.success("✅ Base vectorial actualizada y lista.")
+        else:
+            st.warning("⚠️ Sube un documento primero.")
+
+# --- 5. ENCABEZADO Y DASHBOARD ---
 st.markdown('<h1 class="qrotech-title">QroTech AI Core</h1>', unsafe_allow_html=True)
 st.markdown('<p class="qrotech-subtitle">Motor de Análisis Documental RAG v2.1</p>', unsafe_allow_html=True)
 
-# --- 5. DASHBOARD DE ESTADO (Custom HTML Cards - Fixes cut-off text) ---
-st.markdown("""
+estado_db = "⚡ FAISS Activa" if st.session_state.vector_store else "⚠️ Esperando PDF"
+color_db = "#00C853" if st.session_state.vector_store else "#FACC15"
+
+st.markdown(f"""
 <div class="status-container">
     <div class="status-card">
         <div class="status-label">Estado del Motor</div>
@@ -160,45 +139,40 @@ st.markdown("""
     </div>
     <div class="status-card">
         <div class="status-label">Base Vectorial</div>
-        <div class="status-value">⚡ FAISS Activa</div>
+        <div class="status-value" style="color: {color_db};">{estado_db}</div>
     </div>
     <div class="status-card">
-        <div class="status-label">Documentos</div>
-        <div class="status-value">📄 Manual de Sensores (v1)</div>
+        <div class="status-label">Procesador Lógico</div>
+        <div class="status-value">🧠 Gemini 1.5</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 st.divider()
 
-# --- 6. LÓGICA DEL CHAT REALIZADA (Base) ---
+# --- 6. LÓGICA DEL CHAT ---
 if "messages" not in st.session_state:
-    # Usamos un mensaje técnico para dar contexto real
     st.session_state.messages = [
-        {"role": "assistant", "content": "Sistemas inicializados. Conexión segura establecida con la base de datos de QroTech Data Systems.\n\n¿Qué componente técnico o especificación operativa del **Manual de Sensores de Impacto** deseas consultar hoy?"}
+        {"role": "assistant", "content": "Sistemas de QroTech inicializados.\n\nPor favor, abre el menú lateral (arriba a la izquierda ＞), sube tu manual en PDF y presiona procesar. Luego podrás hacerme consultas técnicas."}
     ]
 
-# Renderizar historial
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- 7. ENTRADA DEL USUARIO ---
-# Mantenemos st.chat_input, el CSS personalizado se encarga de estilizarlo
-if prompt := st.chat_input("Ingresa tu consulta técnica (ej. Rangos de voltaje)..."):
-    
-    # 1. Agregar pregunta del usuario
+if prompt := st.chat_input("Ingresa tu consulta técnica..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Generar respuesta del asistente (Aquí irá tu RAG real después)
     with st.chat_message("assistant"):
-        # Mensaje de transición técnico
-        with st.spinner("Realizando consulta vectorial en FAISS..."):
-            # Simulamos respuesta
-            respuesta = f"He recibido tu consulta sobre: **{prompt}**. Estamos procesando la documentación.\n\n*(Aquí conectaremos tu RAG real)*."
-            st.markdown(respuesta)
-        
-    # 3. Guardar respuesta
-    st.session_state.messages.append({"role": "assistant", "content": respuesta})
+        if st.session_state.vector_store is None:
+            st.warning("El motor RAG no tiene contexto. Por favor, sube y procesa un PDF en el menú lateral.")
+        else:
+            with st.spinner("Analizando documentación interna..."):
+                docs = st.session_state.vector_store.similarity_search(prompt)
+                chain = get_conversational_chain()
+                response = chain({"input_documents": docs, "question": prompt}, return_only_outputs=True)
+                respuesta_final = response["output_text"]
+                st.markdown(respuesta_final)
+                st.session_state.messages.append({"role": "assistant", "content": respuesta_final})
