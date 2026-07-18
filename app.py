@@ -82,12 +82,12 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # Actualizamos al modelo 004 (más moderno y rápido) y declaramos el tipo de tarea
-    # para evitar bloqueos en la red de Streamlit.
+    # Forzamos el protocolo REST para evadir el bloqueo de red de Streamlit
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004", 
         google_api_key=st.secrets["GEMINI_API_KEY"],
-        task_type="retrieval_document"
+        task_type="retrieval_document",
+        transport="rest"
     )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
@@ -106,15 +106,15 @@ def get_conversational_chain():
     
     Respuesta Técnica:
     """
-    # Inyectamos la llave explícitamente al cerebro principal
+    # Aplicamos el mismo puente REST al cerebro principal
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash", 
         temperature=0.3,
-        google_api_key=st.secrets["GEMINI_API_KEY"]
+        google_api_key=st.secrets["GEMINI_API_KEY"],
+        transport="rest"
     )
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     return load_qa_chain(model, chain_type="stuff", prompt=prompt)
-
 # Inicializar Base Vectorial en la sesión
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
