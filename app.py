@@ -1,3 +1,5 @@
+import os
+os.environ["GOOGLE_API_TRANSPORT"] = "rest"
 import streamlit as st
 import os
 import pypdf
@@ -6,8 +8,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_community.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-import os
-os.environ["GOOGLE_API_TRANSPORT"] = "rest"
+
 
 # --- 1. CONFIGURACIÓN DEL NÚCLEO ---
 st.set_page_config(
@@ -84,12 +85,11 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # Forzamos el protocolo REST para evadir el bloqueo de red de Streamlit
+    # Inyectamos el protocolo REST a través de client_options
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004", 
         google_api_key=st.secrets["GEMINI_API_KEY"],
-        task_type="retrieval_document",
-        transport="rest"
+        client_options={"transport": "rest"}
     )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
