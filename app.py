@@ -77,7 +77,8 @@ def get_pdf_text(pdf_docs):
     return text
 
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    # Reducimos los fragmentos a 500 caracteres para evitar el Timeout (504) de Google
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
