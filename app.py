@@ -82,10 +82,12 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # Inyectamos la llave explícitamente aquí
+    # Actualizamos al modelo 004 (más moderno y rápido) y declaramos el tipo de tarea
+    # para evitar bloqueos en la red de Streamlit.
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001", 
-        google_api_key=st.secrets["GEMINI_API_KEY"]
+        model="models/text-embedding-004", 
+        google_api_key=st.secrets["GEMINI_API_KEY"],
+        task_type="retrieval_document"
     )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
