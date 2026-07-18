@@ -81,7 +81,11 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    # Inyectamos la llave explícitamente aquí
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001", 
+        google_api_key=st.secrets["GEMINI_API_KEY"]
+    )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
@@ -99,7 +103,12 @@ def get_conversational_chain():
     
     Respuesta Técnica:
     """
-    model = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.3)
+    # Inyectamos la llave explícitamente al cerebro principal
+    model = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", 
+        temperature=0.3,
+        google_api_key=st.secrets["GEMINI_API_KEY"]
+    )
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     return load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
