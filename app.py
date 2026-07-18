@@ -63,7 +63,6 @@ st.markdown("""
     [data-testid="stChatMessageAvatar"] > div { background-color: #0F172A; border-radius: 8px; }
     
     .stChatInputContainer { border-radius: 12px; border: 1px solid #1E293B; background-color: #0F172A; margin-top: 10px; }
-    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
