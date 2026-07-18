@@ -6,6 +6,8 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGener
 from langchain_community.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
+import os
+os.environ["GOOGLE_API_TRANSPORT"] = "rest"
 
 # --- 1. CONFIGURACIÓN DEL NÚCLEO ---
 st.set_page_config(
