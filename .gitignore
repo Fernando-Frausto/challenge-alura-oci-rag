@@ -1,0 +1,10 @@
+# Entornos virtuales
+venv/
+env/
+
+# Archivos compilados
+__pycache__/
+*.pyc
+
+# Documentos locales (opcional, pero buena practica)
+*.pdf
