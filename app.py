@@ -45,11 +45,11 @@ def get_pdf_text(file_path):
     return text
 
 def create_vector_store(text_chunks):
-    # Usamos la versión estable del modelo con el candado REST obligatorio
+    # Usamos el modelo más reciente SIN el prefijo "models/"
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001",
+        model="text-embedding-004",
         google_api_key=st.secrets["GEMINI_API_KEY"],
-        transport="rest"  # <-- Esto es lo que olvidé ponerte
+        transport="rest"
     )
     return FAISS.from_texts(text_chunks, embedding=embeddings)
 
