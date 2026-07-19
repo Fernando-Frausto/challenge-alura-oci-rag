@@ -3,6 +3,7 @@ os.environ["GOOGLE_API_TRANSPORT"] = "rest"
 import streamlit as st
 import os
 import pypdf
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
@@ -85,13 +86,9 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # La variable os.environ en la línea 1 ya hace el trabajo pesado.
-    # Aquí solo lo reafirmamos con la sintaxis nativa.
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004", 
-        google_api_key=st.secrets["GEMINI_API_KEY"],
-        transport="rest"
-    )
+    # Usamos un modelo open-source ultraligero que corre directo en tu servidor
+    # Esto esquiva por completo cualquier bloqueo de red o Error 504.
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
 
