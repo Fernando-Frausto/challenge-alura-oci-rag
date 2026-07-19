@@ -85,11 +85,12 @@ def get_text_chunks(text):
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # Inyectamos el protocolo REST a través de client_options
+    # La variable os.environ en la línea 1 ya hace el trabajo pesado.
+    # Aquí solo lo reafirmamos con la sintaxis nativa.
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004", 
         google_api_key=st.secrets["GEMINI_API_KEY"],
-        client_options={"transport": "rest"}
+        transport="rest"
     )
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     return vector_store
