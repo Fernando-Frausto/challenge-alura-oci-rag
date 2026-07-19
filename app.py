@@ -1,9 +1,7 @@
 import os
 os.environ["GOOGLE_API_TRANSPORT"] = "rest"
 import streamlit as st
-import os
-import pypdf
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
@@ -73,7 +71,6 @@ st.markdown("""
 # --- 3. FUNCIONES DEL MOTOR RAG (BACKEND) ---
 def get_pdf_text(file_path):
     text = ""
-    # Abrimos el archivo local en modo lectura binaria ("rb")
     with open(file_path, "rb") as f:
         pdf_reader = PdfReader(f)
         for page in pdf_reader.pages:
@@ -81,12 +78,10 @@ def get_pdf_text(file_path):
     return text
 
 def get_text_chunks(text):
-    # Reducimos los fragmentos a 500 caracteres para evitar el Timeout (504) de Google
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     return text_splitter.split_text(text)
 
 def create_vector_store(text_chunks):
-    # Volvemos a Google Embeddings, ahora que la librería actualizada sí respeta el REST
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/text-embedding-004", 
         google_api_key=st.secrets["GEMINI_API_KEY"],
@@ -118,15 +113,10 @@ def get_conversational_chain():
     )
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     return load_qa_chain(model, chain_type="stuff", prompt=prompt)
-if "vector_store" not in st.session_state:
-    st.session_state.vector_store = None
 
-
-# --- AUTOMATIZACIÓN DEL AGENTE ---
-# Nombre exacto del archivo que subiste a la carpeta del proyecto
+# --- 4. AUTOMATIZACIÓN DEL AGENTE ---
 PDF_PATH = "manual.pdf" 
 
-# Si la base de datos no existe en la sesión, la creamos automáticamente
 if "vector_store" not in st.session_state:
     with st.spinner("Iniciando sistemas y cargando base de conocimiento..."):
         if os.path.exists(PDF_PATH):
@@ -135,6 +125,7 @@ if "vector_store" not in st.session_state:
             st.session_state.vector_store = create_vector_store(text_chunks)
             st.sidebar.success("✅ Base de conocimiento de QroTech cargada.")
         else:
+            st.session_state.vector_store = None
             st.sidebar.error(f"⚠️ Error: No se encontró el archivo '{PDF_PATH}' en el servidor.")
 
 # --- 5. ENCABEZADO Y DASHBOARD ---
@@ -166,7 +157,7 @@ st.divider()
 # --- 6. LÓGICA DEL CHAT ---
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Sistemas de QroTech inicializados.\n\nPor favor, abre el menú lateral (arriba a la izquierda ＞), sube tu manual en PDF y presiona procesar. Luego podrás hacerme consultas técnicas."}
+        {"role": "assistant", "content": "Sistemas de QroTech inicializados.\n\nEl manual ha sido cargado en memoria de forma autónoma. ¿En qué te puedo ayudar?"}
     ]
 
 for message in st.session_state.messages:
@@ -180,7 +171,7 @@ if prompt := st.chat_input("Ingresa tu consulta técnica..."):
 
     with st.chat_message("assistant"):
         if st.session_state.vector_store is None:
-            st.warning("El motor RAG no tiene contexto. Por favor, sube y procesa un PDF en el menú lateral.")
+            st.warning("El motor RAG falló al cargar el manual local.")
         else:
             with st.spinner("Analizando documentación interna..."):
                 docs = st.session_state.vector_store.similarity_search(prompt)
