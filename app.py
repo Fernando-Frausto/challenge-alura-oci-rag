@@ -106,16 +106,15 @@ def get_conversational_chain():
     
     Respuesta Técnica:
     """
-    # Cambiamos a gemini-pro para garantizar 100% de compatibilidad
+    
     model = ChatGoogleGenerativeAI(
-        model="gemini-pro", 
+        model="gemini-1.5-flash", 
         temperature=0.3,
         google_api_key=st.secrets["GEMINI_API_KEY"],
         transport="rest"
     )
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     return load_qa_chain(model, chain_type="stuff", prompt=prompt)
-# Inicializar Base Vectorial en la sesión
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
