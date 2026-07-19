@@ -106,9 +106,9 @@ def get_conversational_chain():
     
     Respuesta Técnica:
     """
-    # Aplicamos el mismo puente REST al cerebro principal
+    # Cambiamos a gemini-pro para garantizar 100% de compatibilidad
     model = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", 
+        model="gemini-pro", 
         temperature=0.3,
         google_api_key=st.secrets["GEMINI_API_KEY"],
         transport="rest"
