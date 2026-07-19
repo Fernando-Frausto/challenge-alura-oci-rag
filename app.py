@@ -5,9 +5,10 @@ from PyPDF2 import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
-from langchain.chains.question_answering import load_qa_chain
-from langchain.prompts import PromptTemplate
 
+# IMPORTANTE: Nuevas importaciones core modernas (adiós a langchain.chains)
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
 
 # --- 1. CONFIGURACIÓN DEL NÚCLEO ---
 st.set_page_config(
@@ -111,8 +112,10 @@ def get_conversational_chain():
         google_api_key=st.secrets["GEMINI_API_KEY"],
         transport="rest"
     )
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
-    return load_qa_chain(model, chain_type="stuff", prompt=prompt)
+    prompt = PromptTemplate.from_template(prompt_template)
+    
+    # Arquitectura LCEL: conecta prompt -> modelo -> texto puro (sin fallos de cadenas antiguas)
+    return prompt | model | StrOutputParser()
 
 # --- 4. AUTOMATIZACIÓN DEL AGENTE ---
 PDF_PATH = "manual.pdf" 
@@ -175,8 +178,12 @@ if prompt := st.chat_input("Ingresa tu consulta técnica..."):
         else:
             with st.spinner("Analizando documentación interna..."):
                 docs = st.session_state.vector_store.similarity_search(prompt)
+                
+                # Extraemos el texto puro de los documentos encontrados
+                context_text = "\n\n".join(doc.page_content for doc in docs)
+                
                 chain = get_conversational_chain()
-                response = chain({"input_documents": docs, "question": prompt}, return_only_outputs=True)
-                respuesta_final = response["output_text"]
+                respuesta_final = chain.invoke({"context": context_text, "question": prompt})
+                
                 st.markdown(respuesta_final)
                 st.session_state.messages.append({"role": "assistant", "content": respuesta_final})
