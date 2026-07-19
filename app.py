@@ -84,7 +84,7 @@ def get_text_chunks(text):
 
 def create_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(
-        model="models/text-embedding-004", 
+        model="models/embedding-001",  # ¡Esta es la línea que cambiamos!
         google_api_key=st.secrets["GEMINI_API_KEY"],
         transport="rest"
     )
