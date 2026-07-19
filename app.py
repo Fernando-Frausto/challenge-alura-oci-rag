@@ -45,10 +45,11 @@ def get_pdf_text(file_path):
     return text
 
 def create_vector_store(text_chunks):
-    # Usamos la versión estable del modelo de embeddings
+    # Usamos la versión estable del modelo con el candado REST obligatorio
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001",
-        google_api_key=st.secrets["GEMINI_API_KEY"]
+        google_api_key=st.secrets["GEMINI_API_KEY"],
+        transport="rest"  # <-- Esto es lo que olvidé ponerte
     )
     return FAISS.from_texts(text_chunks, embedding=embeddings)
 
@@ -104,7 +105,8 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-1.5-flash", 
                     temperature=0.3,
-                    google_api_key=st.secrets["GEMINI_API_KEY"]
+                    google_api_key=st.secrets["GEMINI_API_KEY"],
+                    transport="rest"  # <-- Candado REST también para el chat
                 )
                 
                 # Prompt estricto
