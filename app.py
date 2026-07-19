@@ -71,13 +71,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 3. FUNCIONES DEL MOTOR RAG (BACKEND) ---
-def get_pdf_text(pdf_docs):
+def get_pdf_text(file_path):
     text = ""
-    for pdf in pdf_docs:
-        reader = pypdf.PdfReader(pdf)
-        for page in reader.pages:
-            if page.extract_text():
-                text += page.extract_text()
+    # Abrimos el archivo local en modo lectura binaria ("rb")
+    with open(file_path, "rb") as f:
+        pdf_reader = PdfReader(f)
+        for page in pdf_reader.pages:
+            text += page.extract_text() or ""
     return text
 
 def get_text_chunks(text):
@@ -118,21 +118,21 @@ def get_conversational_chain():
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
-# --- 4. MENÚ LATERAL (CARGA DE DOCUMENTOS) ---
-with st.sidebar:
-    st.markdown("### 📂 Carga de Documentación")
-    st.markdown("Sube el PDF para inyectarlo en la base vectorial.")
-    pdf_docs = st.file_uploader("Selecciona archivos PDF", accept_multiple_files=True, type=["pdf"])
-    
-    if st.button("Procesar Datos en FAISS"):
-        if pdf_docs:
-            with st.spinner("Extrayendo texto y generando vectores..."):
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                st.session_state.vector_store = create_vector_store(text_chunks)
-                st.success("✅ Base vectorial actualizada y lista.")
+
+# --- AUTOMATIZACIÓN DEL AGENTE ---
+# Nombre exacto del archivo que subiste a la carpeta del proyecto
+PDF_PATH = "manual.pdf" 
+
+# Si la base de datos no existe en la sesión, la creamos automáticamente
+if "vector_store" not in st.session_state:
+    with st.spinner("Iniciando sistemas y cargando base de conocimiento..."):
+        if os.path.exists(PDF_PATH):
+            raw_text = get_pdf_text(PDF_PATH)
+            text_chunks = get_text_chunks(raw_text)
+            st.session_state.vector_store = create_vector_store(text_chunks)
+            st.sidebar.success("✅ Base de conocimiento de QroTech cargada.")
         else:
-            st.warning("⚠️ Sube un documento primero.")
+            st.sidebar.error(f"⚠️ Error: No se encontró el archivo '{PDF_PATH}' en el servidor.")
 
 # --- 5. ENCABEZADO Y DASHBOARD ---
 st.markdown('<h1 class="qrotech-title">QroTech AI Core</h1>', unsafe_allow_html=True)
