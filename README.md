@@ -54,8 +54,7 @@ El agente está configurado con un prompt estricto para responder basándose **�
 ---
 ## Aplicacion en ejecucion en linea
 ![Captura de la App](captura.png)
-
-![Captura de la App](captura2.png)
+![Segunda Captura de la App](captura2.png)
 
 ## ⚙️ Instrucciones para Ejecutar el Proyecto Localmente
 
