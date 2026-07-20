@@ -52,6 +52,7 @@ El agente está configurado con un prompt estricto para responder basándose **�
 > **Agente QroTech:** No tengo información sobre eso. Soy el asistente técnico de QroTech Data Systems y solo puedo responder consultas basadas en el manual corporativo.
 
 ---
+![Captura de la App](captura.png)
 
 ## ⚙️ Instrucciones para Ejecutar el Proyecto Localmente
 
