@@ -82,31 +82,36 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
             st.warning("El sistema no tiene contexto cargado. Falta la carpeta faiss_index.")
         else:
             with st.spinner("Analizando manual..."):
-                # Búsqueda en la base de datos local FAISS
-                docs = st.session_state.vector_store.similarity_search(prompt)
-                context_text = "\n\n".join(doc.page_content for doc in docs)
+                try:
+                    # Búsqueda en la base de datos local FAISS
+                    docs = st.session_state.vector_store.similarity_search(prompt)
+                    context_text = "\n\n".join(doc.page_content for doc in docs)
+                    
+                    # Configuración del LLM (Agregamos el prefijo models/ por seguridad)
+                    llm = ChatGoogleGenerativeAI(
+                        model="models/gemini-1.5-flash", 
+                        temperature=0.3,
+                        google_api_key=st.secrets["GEMINI_API_KEY"],
+                        transport="rest"
+                    )
+                    
+                    # Arquitectura moderna LCEL
+                    template = """
+                    Eres el asistente técnico de QroTech Data Systems.
+                    Responde ÚNICAMENTE basándote en el siguiente contexto. Si no está ahí, di "No tengo información sobre eso".
+                    
+                    Contexto: {context}
+                    
+                    Pregunta: {question}
+                    """
+                    prompt_template = PromptTemplate.from_template(template)
+                    
+                    chain = prompt_template | llm | StrOutputParser()
+                    respuesta = chain.invoke({"context": context_text, "question": prompt})
+                    
+                    st.markdown(respuesta)
+                    st.session_state.messages.append({"role": "assistant", "content": respuesta})
                 
-                # Configuración del LLM
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-1.5-flash", 
-                    temperature=0.3,
-                    google_api_key=st.secrets["GEMINI_API_KEY"],
-                    transport="rest"
-                )
-                
-                # Arquitectura moderna LCEL
-                template = """
-                Eres el asistente técnico de QroTech Data Systems.
-                Responde ÚNICAMENTE basándote en el siguiente contexto. Si no está ahí, di "No tengo información sobre eso".
-                
-                Contexto: {context}
-                
-                Pregunta: {question}
-                """
-                prompt_template = PromptTemplate.from_template(template)
-                
-                chain = prompt_template | llm | StrOutputParser()
-                respuesta = chain.invoke({"context": context_text, "question": prompt})
-                
-                st.markdown(respuesta)
-                st.session_state.messages.append({"role": "assistant", "content": respuesta})
+                # Este bloque atrapará el error real y te lo mostrará en pantalla
+                except Exception as e:
+                    st.error(f"Error de conexión con Gemini: {str(e)}")
