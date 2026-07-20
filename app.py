@@ -87,9 +87,9 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                     docs = st.session_state.vector_store.similarity_search(prompt)
                     context_text = "\n\n".join(doc.page_content for doc in docs)
                     
-                   # Configuración del LLM (Usamos el modelo clásico universal)
+                   # Configuración del LLM (Usando el modelo moderno habilitado)
                     llm = ChatGoogleGenerativeAI(
-                        model="models/gemini-pro", 
+                        model="models/gemini-2.5-flash", 
                         temperature=0.3,
                         google_api_key=st.secrets["GEMINI_API_KEY"],
                         transport="rest"
