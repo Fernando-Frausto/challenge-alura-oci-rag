@@ -1,10 +1,8 @@
 import os
-# Forzamos la conexión REST desde el inicio para evitar los bloqueos (Error 504)
+# Forzamos la conexión REST desde el inicio para evitar bloqueos en la nube
 os.environ["GOOGLE_API_TRANSPORT"] = "rest"
 
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
@@ -18,10 +16,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Cargamos la llave desde los secretos de Streamlit
 if "GEMINI_API_KEY" in st.secrets:
     os.environ["GOOGLE_API_KEY"] = st.secrets["GEMINI_API_KEY"]
 else:
-    st.error("Error: Clave GEMINI_API_KEY no encontrada.")
+    st.error("Error: Clave GEMINI_API_KEY no encontrada en los secretos de Streamlit.")
 
 # --- 2. ESTILOS VISUALES ---
 st.markdown("""
@@ -35,53 +34,39 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNCIONES RAG ---
-def get_pdf_text(file_path):
-    text = ""
-    with open(file_path, "rb") as f:
-        pdf_reader = PdfReader(f)
-        for page in pdf_reader.pages:
-            text += page.extract_text() or ""
-    return text
-
-def create_vector_store(text_chunks):
-    # Usamos el modelo más reciente SIN el prefijo "models/"
-    embeddings = GoogleGenerativeAIEmbeddings(
-        model="text-embedding-004",
-        google_api_key=st.secrets["GEMINI_API_KEY"],
-        transport="rest"
-    )
-    return FAISS.from_texts(text_chunks, embedding=embeddings)
-
-# --- 4. ARRANQUE AUTÓNOMO ---
-PDF_PATH = "manual.pdf" 
-
+# --- 3. ARRANQUE AUTÓNOMO CON MEMORIA PRE-CARGADA ---
 if "vector_store" not in st.session_state:
-    with st.spinner("Inicializando motor de conocimiento..."):
-        if os.path.exists(PDF_PATH):
-            raw_text = get_pdf_text(PDF_PATH)
-            splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-            chunks = splitter.split_text(raw_text)
-            st.session_state.vector_store = create_vector_store(chunks)
-            st.sidebar.success("✅ Sistema Listo")
+    with st.spinner("Conectando memoria neuronal..."):
+        # Buscamos la carpeta faiss_index que generaste en Colab
+        if os.path.exists("faiss_index"):
+            embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/gemini-embedding-001", # El modelo que comprobaste que funciona
+                google_api_key=st.secrets["GEMINI_API_KEY"],
+                transport="rest"
+            )
+            # allow_dangerous_deserialization permite leer el archivo que tú mismo creaste
+            st.session_state.vector_store = FAISS.load_local(
+                "faiss_index", embeddings, allow_dangerous_deserialization=True
+            )
+            st.sidebar.success("✅ Memoria de QroTech Conectada")
         else:
             st.session_state.vector_store = None
-            st.sidebar.error("⚠️ Archivo manual.pdf no encontrado.")
+            st.sidebar.error("⚠️ Error: Carpeta 'faiss_index' no encontrada en el repositorio.")
 
-# --- 5. INTERFAZ ---
+# --- 4. INTERFAZ ---
 st.markdown('<h1 class="qrotech-title">QroTech AI Core</h1>', unsafe_allow_html=True)
 st.markdown('<p class="qrotech-subtitle">Sistema Autónomo de Análisis Documental</p>', unsafe_allow_html=True)
 
 if st.session_state.vector_store:
     st.markdown('<div class="status-card" style="color:#00C853; border-color:#00C853;">✅ Base Vectorial FAISS Activa y Conectada</div>', unsafe_allow_html=True)
 else:
-    st.markdown('<div class="status-card" style="color:#FACC15;">⚠️ Esperando documento base</div>', unsafe_allow_html=True)
+    st.markdown('<div class="status-card" style="color:#FACC15;">⚠️ Esperando memoria base</div>', unsafe_allow_html=True)
 
 st.divider()
 
-# --- 6. MOTOR DE CHAT ---
+# --- 5. MOTOR DE CHAT ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Sistemas inicializados. ¿En qué te puedo ayudar con el manual de QroTech?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Sistemas inicializados. La base de conocimiento está conectada. ¿En qué te puedo ayudar con el manual de QroTech?"}]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -94,10 +79,10 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
 
     with st.chat_message("assistant"):
         if not st.session_state.vector_store:
-            st.warning("El sistema no tiene contexto cargado.")
+            st.warning("El sistema no tiene contexto cargado. Falta la carpeta faiss_index.")
         else:
             with st.spinner("Analizando manual..."):
-                # Búsqueda en FAISS
+                # Búsqueda en la base de datos local FAISS
                 docs = st.session_state.vector_store.similarity_search(prompt)
                 context_text = "\n\n".join(doc.page_content for doc in docs)
                 
@@ -106,10 +91,10 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                     model="gemini-1.5-flash", 
                     temperature=0.3,
                     google_api_key=st.secrets["GEMINI_API_KEY"],
-                    transport="rest"  # <-- Candado REST también para el chat
+                    transport="rest"
                 )
                 
-                # Prompt estricto
+                # Arquitectura moderna LCEL
                 template = """
                 Eres el asistente técnico de QroTech Data Systems.
                 Responde ÚNICAMENTE basándote en el siguiente contexto. Si no está ahí, di "No tengo información sobre eso".
@@ -120,7 +105,6 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                 """
                 prompt_template = PromptTemplate.from_template(template)
                 
-                # Ejecución de la cadena (LCEL)
                 chain = prompt_template | llm | StrOutputParser()
                 respuesta = chain.invoke({"context": context_text, "question": prompt})
                 
