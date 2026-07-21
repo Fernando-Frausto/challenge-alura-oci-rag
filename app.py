@@ -99,7 +99,7 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                     )
                     
                     # Arquitectura moderna LCEL
-                   template = """Eres el Agente QroTech, un asistente virtual corporativo.
+                    template = """Eres el Agente QroTech, un asistente virtual corporativo.
 
                     REGLAS DE INTERACCIÓN:
                     1. Si el usuario te saluda, devuélvele el saludo amablemente.
