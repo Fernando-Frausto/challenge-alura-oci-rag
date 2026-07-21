@@ -65,8 +65,11 @@ else:
 st.divider()
 
 # --- 5. MOTOR DE CHAT ---
+# Inicializar el historial de chat con un saludo predeterminado
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Sistemas inicializados. La base de conocimiento está conectada. ¿En qué te puedo ayudar con el manual de QroTech?"}]
+    st.session_state.messages = [
+        {"role": "assistant", "content": "¡Hola! Soy el Agente IA de QroTech. Estoy aquí para resolver tus dudas basándome en nuestro manual corporativo y SLAs. ¿En qué te puedo ayudar hoy?"}
+    ]
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -96,14 +99,20 @@ if prompt := st.chat_input("Escribe tu consulta técnica..."):
                     )
                     
                     # Arquitectura moderna LCEL
-                    template = """
-                    Eres el asistente técnico de QroTech Data Systems.
-                    Responde ÚNICAMENTE basándote en el siguiente contexto. Si no está ahí, di "No tengo información sobre eso".
-                    
-                    Contexto: {context}
-                    
+                   template = """Eres el Agente QroTech, un asistente virtual corporativo.
+
+                    REGLAS DE INTERACCIÓN:
+                    1. Si el usuario te saluda, devuélvele el saludo amablemente.
+                    2. Si el usuario te pregunta qué puedes hacer o quién eres, explícale que eres un asistente técnico de QroTech diseñado para responder preguntas basándote exclusivamente en el manual corporativo y las políticas de la empresa.
+                    3. Para cualquier otra pregunta técnica o corporativa, utiliza ÚNICAMENTE los siguientes fragmentos de contexto recuperados para responder. 
+                    4. Si la respuesta no está en el contexto, di "No tengo información sobre eso. Soy el asistente técnico de QroTech y solo puedo responder consultas basadas en el manual corporativo." No inventes información.
+
+                    Contexto:
+                    {context}
+
                     Pregunta: {question}
-                    """
+
+                    Respuesta:"""
                     prompt_template = PromptTemplate.from_template(template)
                     
                     chain = prompt_template | llm | StrOutputParser()
